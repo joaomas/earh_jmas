@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #-----------------------------------------------------------------------------#
 # !SCRIPT: run_post
 #
@@ -40,13 +40,10 @@ echo ""
 echo -e "\033[1;32m==>\033[0m Moduling environment for MONAN model...\n"
 . setenv.bash
 
-echo ""
-echo "---- Make Template ----"
-echo ""
 
 
 # Standart directories variables:---------------------------------------
-DIRHOMES=$(dirname "$(pwd)");          mkdir -p ${DIRHOMES}  
+DIRHOMES=${DIR_SCRIPTS}/scripts_CD-CT; mkdir -p ${DIRHOMES}  
 DIRHOMED=${DIR_DADOS}/scripts_CD-CT;   mkdir -p ${DIRHOMED}  
 export SCRIPTS=${DIRHOMES}/scripts;    mkdir -p ${SCRIPTS}
 DATAIN=${DIRHOMED}/datain;             mkdir -p ${DATAIN}
@@ -77,8 +74,8 @@ N_MODEL_LEV=55
 # Variables for flex outpout interval from streams.atmosphere------------------------
 t_strout=$(cat ${SCRIPTS}/namelists/streams.atmosphere.TEMPLATE | sed -n '/<stream name="diagnostics"/,/<\/stream>/s/.*output_interval="\([^"]*\)".*/\1/p')
 t_stroutsec=$(echo ${t_strout} | awk -F: '{print ($1 * 3600) + ($2 * 60) + $3}')
-t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | bc)
-t_stroutmin=$(echo "${t_stroutsec}/60" | bc)
+t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | ${BC})
+t_stroutmin=$(echo "${t_stroutsec}/60" | ${BC})
 #------------------------------------------------------------------------------------
 
 cd ${DIRRUN}
@@ -122,10 +119,10 @@ else
 fi
 
 output_interval=${t_strouthor}
-nfiles=$(echo "$FCST/$output_interval + 1" | bc)
+nfiles=$(echo "$FCST/$output_interval + 1" | ${BC})
 
-diag_name_post=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_${YYYYMMDDHHi}.00.00.x${RES}L${N_MODEL_LEV}.nc
-diag_name_templ=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_%y4%m2%d2%h2.%n2.00.x${RES}L${N_MODEL_LEV}.nc
+diag_name_post=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_${YYYYMMDDHHi}.00.00.x${RES}L${NLEV}.nc
+diag_name_templ=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_%y4%m2%d2%h2.%n2.00.x${RES}L${NLEV}.nc
 
 rm -fr ${DIRRUN}/qctlinfo.gs
 cat > ${DIRRUN}/qctlinfo.gs <<EOGS
@@ -138,7 +135,8 @@ say result
 'quit'
 EOGS
 cd ${DIRRUN}
-grads -blc "run ${DIRRUN}/qctlinfo.gs" | awk '/dset/,/endvars/' > ${DIRRUN}/qctlinfo.ctl
+#grads -blc "run ${DIRRUN}/qctlinfo.gs" | awk '/dset/,/endvars/' > ${DIRRUN}/qctlinfo.ctl
+${GRADS}
 timectl=$(grep tdef ${DIRRUN}/qctlinfo.ctl | cut -d" " -f4)
 sed -i '3a\options template' ${DIRRUN}/qctlinfo.ctl
 sed -i "/tdef/c\tdef ${nfiles} linear ${timectl} ${t_stroutmin}mn" ${DIRRUN}/qctlinfo.ctl

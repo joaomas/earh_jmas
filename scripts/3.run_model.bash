@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 #-----------------------------------------------------------------------------#
 # !SCRIPT: run_model
 #
@@ -41,13 +41,10 @@ echo ""
 echo -e "\033[1;32m==>\033[0m Moduling environment for MONAN model...\n"
 . setenv.bash
 
-echo ""
-echo "---- Run Model ----"
-echo ""
 
 
 # Standart directories variables:---------------------------------------
-DIRHOMES=$(dirname "$(pwd)");          mkdir -p ${DIRHOMES}  
+DIRHOMES=${DIR_SCRIPTS}/scripts_CD-CT; mkdir -p ${DIRHOMES}  
 DIRHOMED=${DIR_DADOS}/scripts_CD-CT;   mkdir -p ${DIRHOMED}  
 SCRIPTS=${DIRHOMES}/scripts;           mkdir -p ${SCRIPTS}
 DATAIN=${DIRHOMED}/datain;             mkdir -p ${DATAIN}
@@ -79,7 +76,7 @@ export DIRRUN=${DIRHOMED}/run.${YYYYMMDDHHi}; rm -fr ${DIRRUN}; mkdir -p ${DIRRU
 # Variables for flex outpout interval from streams.atmosphere------------------------
 t_strout=$(cat ${SCRIPTS}/namelists/streams.atmosphere.TEMPLATE | sed -n '/<stream name="diagnostics"/,/<\/stream>/s/.*output_interval="\([^"]*\)".*/\1/p')
 t_stroutsec=$(echo ${t_strout} | awk -F: '{print ($1 * 3600) + ($2 * 60) + $3}')
-t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | bc)
+t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | ${BC})
 #------------------------------------------------------------------------------------
 
 # Format to HH:MM:SS t_strout (output_interval)
@@ -106,8 +103,10 @@ fi
 
 # Calculating final forecast dates in model namelist format: DD_HH:MM:SS 
 # using: start_date(yyyymmdd) + FCST(hh) :
-ind=$(printf "%02d\n" $(echo "${FCST}/24" | bc))
-inh=$(printf "%02.0f\n" $(echo "((${FCST}/24)-${ind})*24" | bc -l))
+#ind=$(printf "%02d\n" $(echo "${FCST}/24" | ${BC}))
+#inh=$(printf "%02.0f\n" $(echo "((${FCST}/24)-${ind})*24" | ${BCL}))
+ind=$(awk -v f=$FCST 'BEGIN { printf "%02d", int(f/24) }')
+inh=$(awk -v f=$FCST 'BEGIN { printf "%02.0f", (f/24 - int(f/24))*24 }')
 DD_HHMMSS_forecast=$(echo "${ind}_${inh}:00:00")
 
 
@@ -124,7 +123,7 @@ then
    fi
    echo -e "${GREEN}==>${NC} Creating x1.${RES}.graph.info.part.${cores} ... \n"
    cd ${DATAIN}/fixed
-   gpmetis -minconn -contig -niter=200 x1.${RES}.graph.info ${cores}
+   source ${STOOLS}/cmd-gpmetis
    rm -fr x1.${RES}.tar.gz x1.${RES}_static.tar.gz
 fi
 
@@ -167,85 +166,26 @@ cp -f ${SCRIPTS}/namelists/stream_list.atmosphere.surface ${DIRRUN}
 
 cp -f ${SCRIPTS}/setenv.bash ${DIRRUN}
 rm -f ${DIRRUN}/model.bash 
-
-if [ ${SCHEDULER_SYSTEM} != "GENERIC" ]
-then
-   sed -e "s,#JOBNAME#,${MODEL_jobname},g;
-   s,#NNODES#,${MODEL_nnodes},g;
-   s,#NTASKS#,${MODEL_ncores},g;
-   s,#NTASKSPNODE#,${MODEL_ncpn},g;
-   s,#PARTITION#,${MODEL_QUEUE},g;
-   s,#WALLTIME#,${MODEL_walltime},g;
-   s,#OUTPUTJOB#,${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.o%j,g;
-   s,#ERRORJOB#,${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.e%j,g" \
-   ${SCRIPTS}/stools/submit_${SYSTEM_KEY}.bash_TEMPLATE > ${DIRRUN}/model.bash 
-else
-   echo "#!/bin/bash " > ${DIRRUN}/model.bash 
-fi
-
-cat << EOF0 >> ${DIRRUN}/model.bash 
-export executable=atmosphere_model
-
-ulimit -c unlimited
-ulimit -v unlimited
-ulimit -s unlimited
-
-. $(pwd)/setenv.bash
-
-cd ${DIRRUN}
-
-date
-time mpirun -np ${MODEL_ncores} ./\${executable}
-date
-
-#
-# move dataout, clean up and remove files/links
-#
-mv MONAN_DIAG_* ${DATAOUT}/${YYYYMMDDHHi}/Model
-mv MONAN_HIST_* ${DATAOUT}/${YYYYMMDDHHi}/Model
-cp -f ${EXECS}/MONAN-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Model
-cp -f ${EXECS}/MONAN-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/
-cp -f ${DIRHOMES}/VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/SCRIPTSCDCT-VERSION.txt
-cp -f ${MONANDIR}/README.md ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/
-mv log.atmosphere.*.out ${DATAOUT}/${YYYYMMDDHHi}/Model/logs
-mv log.atmosphere.*.err ${DATAOUT}/${YYYYMMDDHHi}/Model/logs
-mv namelist.atmosphere ${DATAOUT}/${YYYYMMDDHHi}/Model/logs
-mv stream* ${DATAOUT}/${YYYYMMDDHHi}/Model/logs
-EOF0
+source ${STOOLS}/3makemodel
 chmod a+x ${DIRRUN}/model.bash
 
 
-case "${SCHEDULER_SYSTEM}" in
-   SLURM)
-      echo -e  "${GREEN}==>${NC} Submitting MONAN atmosphere model and waiting for finish before exit... \n"
-      echo -e  "${GREEN}==>${NC} Logs being generated at ${DATAOUT}/logs... \n"
-      echo -e  "sbatch ${SCRIPTS}/model.bash"
-      cd ${DIRRUN}
-      sbatch --wait ${DIRRUN}/model.bash
-        ;;
-#    PBS)
-#      echo "Rodando em PBS"
-#      cd ${DIRRUN}
-#      # comandos qsub, qstat, etc.
-#      ;;
-#    GENERIC)
-#      echo "Nenhum gerenciador detectado"
-#      cd ${DIRRUN}
-#      ${DIRRUN}/model.bash
-#      ;;
-esac
+echo -e  "${GREEN}==>${NC} Submitting MONAN atmosphere model and waiting for finish before exit... \n"
+echo -e  "${GREEN}==>${NC} Logs being generated at ${DATAOUT}/logs... \n"
+echo -e  "sbatch ${SCRIPTS}/model.bash"
+source ${STOOLS}/3runmodel
 mv ${DIRRUN}/model.bash ${DATAOUT}/${YYYYMMDDHHi}/Model/logs
 
 
 #-----Loop que verifica se os arquivos foram gerados corretamente (>0)-----
 output_interval=${t_strouthor}
-nfiles=$(echo "$FCST/$output_interval + 1" | bc)
+nfiles=$(echo "$FCST/$output_interval + 1" | ${BC})
 for ii in $(seq 1 ${nfiles})
 do
    i=$(printf "%04d" ${ii})
    hh=${YYYYMMDDHHi:8:2}
-   currentdate=$(date -d "${YYYYMMDDHHi:0:8} ${hh}:00:00 $(echo "(${i}-1)*${t_strout:0:2}" | bc) hours $(echo "(${i}-1)*${t_strout:3:2}" | bc) minutes $(echo "(${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
-   file=MONAN_DIAG_G_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L${NLEV}.nc
+   currentdate=$(date -d "${YYYYMMDDHHi:0:8} ${hh}:00:00 $(echo "(${i}-1)*${t_strout:0:2}" | ${BC}) hours $(echo "(${i}-1)*${t_strout:3:2}" | ${BC}) minutes $(echo "(${i}-1)*${t_strout:6:2}" | ${BC}) seconds" +"%Y%m%d%H.%M.%S")
+   file=MONAN_DIAG_G_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L55.nc
 
    if [ ! -s ${DATAOUT}/${YYYYMMDDHHi}/Model/${file} ]
    then

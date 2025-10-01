@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #-----------------------------------------------------------------------------#
 # !SCRIPT: run_post
 #
@@ -40,13 +40,10 @@ echo ""
 echo -e "\033[1;32m==>\033[0m Moduling environment for MONAN model...\n"
 . setenv.bash
 
-echo ""
-echo "---- Run Post ----"
-echo ""
 
 
 # Standart directories variables:---------------------------------------
-DIRHOMES=$(dirname "$(pwd)");          mkdir -p ${DIRHOMES}  
+DIRHOMES=${DIR_SCRIPTS}/scripts_CD-CT; mkdir -p ${DIRHOMES}  
 DIRHOMED=${DIR_DADOS}/scripts_CD-CT;   mkdir -p ${DIRHOMED}  
 export SCRIPTS=${DIRHOMES}/scripts;    mkdir -p ${SCRIPTS}
 DATAIN=${DIRHOMED}/datain;             mkdir -p ${DATAIN}
@@ -65,7 +62,6 @@ FCST=${4};        #FCST=40
 mkdir -p ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
 
 
-
 # Local variables--------------------------------------
 START_DATE_YYYYMMDD="${YYYYMMDDHHi:0:4}-${YYYYMMDDHHi:4:2}-${YYYYMMDDHHi:6:2}"
 START_HH="${YYYYMMDDHHi:8:2}"
@@ -73,13 +69,12 @@ maxpostpernode=30    # <------ qtde max de convert_mpas por no!
 VARTABLE=".OPER"
 export DIRRUN=${DIRHOMED}/run.${YYYYMMDDHHi}; rm -fr ${DIRRUN}; mkdir -p ${DIRRUN}
 N_MODEL_LEV=55
-NLEV=18
 #-------------------------------------------------------
 
 # Variables for flex outpout interval from streams.atmosphere------------------------
 t_strout=$(cat ${SCRIPTS}/namelists/streams.atmosphere.TEMPLATE | sed -n '/<stream name="diagnostics"/,/<\/stream>/s/.*output_interval="\([^"]*\)".*/\1/p')
 t_stroutsec=$(echo ${t_strout} | awk -F: '{print ($1 * 3600) + ($2 * 60) + $3}')
-t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | bc)
+t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | ${BC})
 #------------------------------------------------------------------------------------
 
 # Format to HH:MM:SS t_strout (output_interval)
@@ -118,6 +113,14 @@ elif [ $RES -eq 5898242 ]; then  #10Km
 fi
 #-------------------------------------------------------
 
+# NLEVS get from t_iso_levels in Registry_isobaric.xml:
+if [ -s ${MONANDIR}/src/core_atmosphere/diagnostics/Registry_isobaric.xml ]
+then
+   NLEV=$(grep "t_iso_levels" ${MONANDIR}/src/core_atmosphere/diagnostics/Registry_isobaric.xml | grep definition | cut -d\" -f4)
+else
+   NLEV=18
+fi
+
 
 files_needed=("${SCRIPTS}/namelists/include_fields.diag${VARTABLE}" "${SCRIPTS}/namelists/convert_mpas.nml" "${SCRIPTS}/namelists/target_domain.TEMPLATE" "${EXECS}/convert_mpas" "${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc")
 for file in "${files_needed[@]}"
@@ -136,19 +139,19 @@ done
 # from streams.atmosphere.TEMPLATE in diagnostics the output_interval is flexible
 output_interval=${t_strouthor}
 #nfiles=FCST/output_interval + 1(time zero file)
-nfiles=$(echo "$FCST/$output_interval + 1" | bc)
+nfiles=$(echo "$FCST/$output_interval + 1" | ${BC})
 echo "${nfiles} post to submit."
 echo "Max ${maxpostpernode} submits per nodes."
 how_many_nodes ${nfiles} ${maxpostpernode}
 
 # Cria os diretorios e arquivos/links para cada saida do convert_mpas:
 cd ${DIRRUN}
-cp -f ${SCRIPTS}/setenv.bash ${DIRRUN}
+#cp -f ${SCRIPTS}/setenv.bash ${DIRRUN}
 for ii in $(seq 1 ${nfiles})
 do
    i=$(printf "%04d" ${ii})
    mkdir -p ${DIRRUN}/dir.${i}
-   cp -f ${SCRIPTS}/setenv.bash ${DIRRUN}/dir.${i}
+   #cp -f ${SCRIPTS}/setenv.bash ${DIRRUN}/dir.${i}
    cp -f ${SCRIPTS}/namelists/include_fields.diag${VARTABLE}  ${DIRRUN}/dir.${i}/include_fields.diag${VARTABLE}
    cp -f ${DIRRUN}/dir.${i}/include_fields.diag${VARTABLE} ${DIRRUN}/dir.${i}/include_fields
    sed -e "s,#NISOLEV#,${NLEV},g;s,#NMODELLEV#,${N_MODEL_LEV},g" \
@@ -167,96 +170,13 @@ fim=$((maxpostpernode <= nfiles ? maxpostpernode : nfiles))
 while [ ${inicio} -le ${nfiles} ]
 do
    rm -f ${DIRRUN}/PostAtmos_node.${node}.sh
-   
-   if [ ${SCHEDULER_SYSTEM} != "GENERIC" ]   
-   then
-      sed -e "s/#JOBNAME#/MO.Pos${node}/g;
-      s/#NNODES#/1/g;
-      /#NTASKS#/d;
-      /#NTASKSPNODE#/d;
-      s/#PARTITION#/${POST_QUEUE}/g;
-      s/#WALLTIME#/${POST_walltime}/g;
-      s|#OUTPUTJOB#|${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.o%j|g;
-      s|#ERRORJOB#|${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.e%j|g" \
-      ${SCRIPTS}/stools/submit_${SYSTEM_KEY}.bash_TEMPLATE > \
-      ${DIRRUN}/PostAtmos_node.${node}.sh
-   else
-      echo "#!/bin/bash " > ${DIRRUN}/PostAtmos_node.${node}.sh
-   fi
-   
-cat << EOSH >> ${DIRRUN}/PostAtmos_node.${node}.sh 
+   source ${STOOLS}/4makepost1
 
-. ${DIRRUN}/setenv.bash
-
-echo "Executing posts ${inicio} to ${fim} in node Node ${node}."
-
-for ii in \$(seq  ${inicio} ${fim})
-do
-   i=\$(printf "%04d" \${ii})
-   echo "Preparing post files \${i}"
-   cp -f ${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc ${DIRRUN}/dir.\${i} &
-   cp -f ${EXECS}/convert_mpas ${DIRRUN}/dir.\${i} &
-done
-
-wait
-
-for ii in \$(seq  ${inicio} ${fim})
-do
-   i=\$(printf "%04d" \${ii})
-   echo "Executing post \${i}"
-   cd ${DIRRUN}/dir.\${i}
-   
-   hh=${YYYYMMDDHHi:8:2}
-   currentdate=\$(date -d "${YYYYMMDDHHi:0:8} \${hh}:00:00 \$(echo "(\${i}-1)*${t_strout:0:2}" | bc) hours \$(echo "(\${i}-1)*${t_strout:3:2}" | bc) minutes \$(echo "(\${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
-   diag_name=MONAN_DIAG_G_MOD_${EXP}_${YYYYMMDDHHi}_\${currentdate}.x${RES}L${N_MODEL_LEV}.nc
-
-   time  ./convert_mpas x1.${RES}.init.nc ${DATAOUT}/${YYYYMMDDHHi}/Model/\${diag_name}  > convert_mpas.output & 
-   echo "./convert_mpas x1.${RES}.init.nc ${DATAOUT}/${YYYYMMDDHHi}/Model/\${diag_name} > convert_mpas.output"
-done
-
-# necessario aguardar as rodadas em background
-wait
-
-for ii in \$(seq  ${inicio} ${fim})
-do
-   i=\$(printf "%04d" \${ii})
-   hh=${YYYYMMDDHHi:8:2}
-   currentdate=\$(date -d "${YYYYMMDDHHi:0:8} \${hh}:00 \$(echo "(\${i}-1)*3" | bc) hours" +"%Y%m%d%H")
-   diag_name_post=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_\${currentdate}.00.00.x${RES}L${N_MODEL_LEV}.nc
-   
-   cd ${DIRRUN}/dir.\${i}
-   cp latlon.nc  ${DATAOUT}/${YYYYMMDDHHi}/Post/\${diag_name_post} >> convert_mpas.output & 
-   echo "cp latlon.nc  ${DATAOUT}/${YYYYMMDDHHi}/Post/\${diag_name_post}"  >> convert_mpas.output
-   
-done
- 
-wait
- 
-EOSH
-   
    chmod a+x ${DIRRUN}/PostAtmos_node.${node}.sh
    cp -f ${DIRRUN}/PostAtmos_node.${node}.sh ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-
-   case "${SCHEDULER_SYSTEM}" in
-      SLURM)
-         echo "Sbatch PostAtmos_node.${node}.sh"
-         jobid[${node}]=$(sbatch --parsable ${DIRRUN}/PostAtmos_node.${node}.sh)
-         echo "JobId node ${node} = ${jobid[${node}]} , convert_mpas ${inicio} to ${fim}"
-         echo ""
-         ;;
-#      PBS)
-#         echo "Rodando em PBS"
-#         # comandos qsub, qstat, etc.
-#        ;;
-#      GENERIC)
-#         echo "Nenhum gerenciador detectado"
-#         ${DIRRUN}/PostAtmos_node.${node}.sh
-#         ;;
-   esac
+   source ${STOOLS}/4runpost1
+   echo "JobId node ${node} = ${jobid[${node}]} , convert_mpas ${inicio} to ${fim}"
   
-
-
-
    inicio=$((fim + 1))
    temp=$((fim + maxpostpernode))
    fim=$(( temp < nfiles ? temp : nfiles ))
@@ -278,62 +198,9 @@ done
 # Script final , para conferir todos os arquivos, criar o template final  e apagar o diretorio DIRRUN
 node=0
 rm -f ${DIRRUN}/PostAtmos_node.${node}.sh
-
-if [ ${SCHEDULER_SYSTEM} != "GENERIC" ]   
-then
-   sed -e "s/#JOBNAME#/MO.Pos${node}/g;
-   s/#NNODES#/1/g;
-   /#NTASKS#/d;
-   /#NTASKSPNODE#/d;
-   s/#PARTITION#/${POST_QUEUE}/g;
-   s/#WALLTIME#/${POST_walltime}/g;
-   s|#OUTPUTJOB#|${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.o%j|g;
-   s|#ERRORJOB#|${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.e%j|g" \
-   ${SCRIPTS}/stools/submit_${SYSTEM_KEY}.bash_TEMPLATE > \
-   ${DIRRUN}/PostAtmos_node.${node}.sh
-else
-   echo "#!/bin/bash " > ${DIRRUN}/PostAtmos_node.${node}.sh
-fi
-
-
-
-
-cat << EOSH >> ${DIRRUN}/PostAtmos_node.${node}.sh 
-. ${DIRRUN}/setenv.bash
-
-# Saving important files to the logs directory:
-cp -f ${EXECS}/CONVMPAS-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Post
-cp -f ${EXECS}/CONVMPAS-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DIRRUN}/dir.0001/target_domain ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DIRRUN}/dir.0001/convert_mpas.nml ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DIRRUN}/dir.0001/include_fields ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DIRRUN}/dir.0001/convert_mpas.output ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DIRRUN}/PostAtmos_node.*.sh ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/* ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DATAOUT}/${YYYYMMDDHHi}/Model/MONAN-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-
-
-cd ${DIRRUN}/..
-rm -fr ${DIRRUN}
-
-
-EOSH
+source ${STOOLS}/4makepost0
 chmod a+x ${DIRRUN}/PostAtmos_node.${node}.sh
-
-case "${SCHEDULER_SYSTEM}" in
-   SLURM)
-      echo "Sbatch PostAtmos_node.${node}.sh"
-      sbatch --wait --dependency=${dependency} ${DIRRUN}/PostAtmos_node.${node}.sh 
-      ;;
-#   PBS)
-#      echo "Rodando em PBS"
-#      # comandos qsub, qstat, etc.
-#     ;;
-#   GENERIC)
-#      echo "Nenhum gerenciador detectado"
-#      ${DIRRUN}/PostAtmos_node.${node}.sh
-#      ;;
-esac
+source ${STOOLS}/4runpost0
 
 #CR: passar este scriptpara dentro do script PostAtmos_node.0.sh, submetido.
 cd ${SCRIPTS}

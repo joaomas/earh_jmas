@@ -26,12 +26,9 @@ echo ""
 echo -e "\033[1;32m==>\033[0m Moduling environment for MONAN model...\n"
 . setenv.bash
 
-echo ""
-echo "---- Make Init Atmosphere ----"
-echo ""
 
 # Standart directories variables:---------------------------------------
-DIRHOMES=$(dirname "$(pwd)");          mkdir -p ${DIRHOMES}  
+DIRHOMES=${DIR_SCRIPTS}/scripts_CD-CT; mkdir -p ${DIRHOMES}  
 DIRHOMED=${DIR_DADOS}/scripts_CD-CT;   mkdir -p ${DIRHOMED}  
 SCRIPTS=${DIRHOMES}/scripts;           mkdir -p ${SCRIPTS}
 DATAIN=${DIRHOMED}/datain;             mkdir -p ${DATAIN}
@@ -58,8 +55,6 @@ export DIRRUN=${DIRHOMED}/run.${YYYYMMDDHHi}; rm -fr ${DIRRUN}; mkdir -p ${DIRRU
 mkdir -p ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs
 
 
-
-
 if [ ! -s ${DATAIN}/fixed/x1.${RES}.graph.info.part.${cores} ]
 then
    if [ ! -s ${DATAIN}/fixed/x1.${RES}.graph.info ]
@@ -74,7 +69,7 @@ then
    fi
    echo -e "${GREEN}==>${NC} Creating x1.${RES}.graph.info.part.${cores} ... \n"
    cd ${DATAIN}/fixed
-   gpmetis -minconn -contig -niter=200 x1.${RES}.graph.info ${cores}
+   source ${STOOLS}/cmd-gpmetis
    rm -fr x1.${RES}.tar.gz x1.${RES}_static.tar.gz
 fi
 
@@ -106,72 +101,13 @@ cp -f ${EXECS}/init_atmosphere_model ${DIRRUN}
 
 cp -f ${SCRIPTS}/setenv.bash ${DIRRUN}
 rm -f ${DIRRUN}/initatmos.bash 
-
-
-if [ ${SCHEDULER_SYSTEM} != "GENERIC" ]
-then
-   sed -e "s,#JOBNAME#,${INITATMOS_jobname},g;
-   s,#NNODES#,${INITATMOS_nnodes},g;
-   s,#NTASKS#,${INITATMOS_ncores},g;
-   s,#NTASKSPNODE#,${INITATMOS_ncpn},g;
-   s,#PARTITION#,${INITATMOS_QUEUE},g;
-   s,#WALLTIME#,${INITATMOS_walltime},g;
-   s,#OUTPUTJOB#,${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.o%j,g;
-   s,#ERRORJOB#,${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.e%j,g" \
-   ${SCRIPTS}/stools/submit_${SYSTEM_KEY}.bash_TEMPLATE > ${DIRRUN}/initatmos.bash 
-else
-   echo "#!/bin/bash " > ${DIRRUN}/initatmos.bash 
-fi
-
-
-
-cat << EOF0 >> ${DIRRUN}/initatmos.bash 
-export executable=init_atmosphere_model
-
-ulimit -c unlimited
-ulimit -v unlimited
-ulimit -s unlimited
-
-
-. $(pwd)/setenv.bash
-
-cd ${DIRRUN}
-
-
-
-date
-time mpirun -np ${INITATMOS_ncores} ./\${executable}
-date
-
-
-mv ${DIRRUN}/log.init_atmosphere.0000.out ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/log.init_atmosphere.0000.x1.${RES}.init.nc.${YYYYMMDDHHi}.out
-mv ${DIRRUN}/namelist.init_atmosphere ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs
-mv ${DIRRUN}/streams.init_atmosphere ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs
-mv ${DIRRUN}/x1.${RES}.init.nc ${DATAOUT}/${YYYYMMDDHHi}/Pre
-
-EOF0
+source ${STOOLS}/2makeinitatmos
 chmod a+x ${DIRRUN}/initatmos.bash
 
-case "${SCHEDULER_SYSTEM}" in
-   SLURM)
-      echo -e  "${GREEN}==>${NC} Sbatch initatmos.bash...\n"
-      cd ${DIRRUN}
-      sbatch --wait ${DIRRUN}/initatmos.bash
-      ;;
-#    PBS)
-#      echo "Rodando em PBS"
-#      cd ${DIRRUN}
-#      # comandos qsub, qstat, etc.
-#      ;;
-#    GENERIC)
-#      echo "Nenhum gerenciador detectado"
-#      cd ${DIRRUN}
-#      ${DIRRUN}/initatmos.bash
-#      ;;
-esac
+echo -e  "${GREEN}==>${NC} Executing sbatch initatmos.bash...\n"
+cd ${DIRRUN}
+source ${STOOLS}/2runinitatmos
 mv ${DIRRUN}/initatmos.bash ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs
-
-
 
 if [ ! -s ${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc ]
 then

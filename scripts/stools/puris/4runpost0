@@ -1,0 +1,4 @@
+#!/bin/bash
+
+qsub -W block=true -W depend=afterok:${dependency} ${DIRRUN}/PostAtmos_node.${node}.sh
+

@@ -70,12 +70,8 @@ echo ""
 echo -e "\033[1;32m==>\033[0m Moduling environment for MONAN model...\n"
 . setenv.bash
 
-echo ""
-echo "---- Installing the Model ----"
-echo ""
-
 # Standart directories variables:---------------------------------------
-DIRHOMES=$(dirname "$(pwd)");           mkdir -p ${DIRHOMES}  
+DIRHOMES=${DIR_SCRIPTS}/scripts_CD-CT;  mkdir -p ${DIRHOMES}  
 DIRHOMED=${DIR_DADOS}/scripts_CD-CT;    mkdir -p ${DIRHOMED}  
 SCRIPTS=${DIRHOMES}/scripts;            mkdir -p ${SCRIPTS}
 DATAIN=${DIRHOMED}/datain;              mkdir -p ${DATAIN}
@@ -201,10 +197,10 @@ rm -f  $MONANDIR/make*.output.atmosphere $MONANDIR/make*.output.init_atmosphere
 rm -fr $MONANDIR/src/core_atmosphere/inc $MONANDIR/src/core_init_atmosphere/inc
 DATE_TIME_NOW=\$(date +"%Y%m%d%H%M%S")
 
-export NETCDF=${NETCDFDIR}
-export PNETCDF=${PNETCDFDIR}
+#export NETCDF=${NETCDFDIR}
+#export PNETCDF=${PNETCDFDIR}
 # PIO is not necessary for version 8.* If PIO is empty, MPAS Will use SMIOL
-export PIO=
+#export PIO=
 
 MAKE_OUT_FILE="make_\${DATE_TIME_NOW}_.output.atmosphere"
 make clean CORE=atmosphere
@@ -237,29 +233,19 @@ fi
 EOF
 chmod a+x make-all.sh
 
+
 echo ""
 echo -e  "${GREEN}==>${NC} Installing init_atmosphere_model and atmosphere_model...\n"
 echo ""
-
-. ${MONANDIR}/make-all.sh
-
-
-# install convert_mpas
-echo ""
-echo -e  "${GREEN}==>${NC} Moduling environment for convert_mpas...\n"
-module purge
-module load gnu9/9.4.0
-module load ohpc
-module load phdf5
-module load netcdf
-module load netcdf-fortran
-module list
+# install monan model
+source ${STOOLS}/1compile_monan
 
 cd ${CONVERT_MPAS_DIR}
 echo ""
 echo -e  "${GREEN}==>${NC} Installing convert_mpas...\n"
-make clean
-make  2>&1 | tee make.convert.output
+# install convert_mpas
+source ${STOOLS}/1compile_convertmpas
+
 
 #CR: TODO: put verify here if executable was created ok
 mv ${CONVERT_MPAS_DIR}/convert_mpas ${EXECS}/
