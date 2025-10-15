@@ -4,12 +4,13 @@ cat << EOF0 > ${DIRRUN}/model.bash
 #!/bin/bash -x
 #PBS -N ${MODEL_jobname}
 #PBS -q ${MODEL_QUEUE}
-#PBS -l select=${MODEL_nnodes}:ncpus=${MODEL_ncpn}
-#PBS -l walltime=${MODEL_walltime}
-#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.e$PBS_JOBID          # File name for standard error output
+#PBS -l select=${MODEL_nnodes}:ncpus=${MODEL_ncpn}:mpiprocs=${MODEL_ncpn}
+#PBS -l place=scatter
 #PBS -l place=excl
-##PBS -l mem=500000mb
+#PBS -l walltime=${MODEL_walltime}
+#PBS -j oe
+#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.o$PBS_JOBID
+#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.e$PBS_JOBID
 
 
 export executable=atmosphere_model
@@ -24,7 +25,7 @@ cd ${DIRRUN}
 
 
 date
-time mpirun -np \${SLURM_NTASKS} ./\${executable}
+time mpirun -np ${MODEL_ncores} ./\${executable}
 date
 
 #

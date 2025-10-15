@@ -3,13 +3,14 @@
 cat << EOF0 > ${DIRRUN}/initatmos.bash 
 #!/bin/bash -x
 #PBS -N ${INITATMOS_jobname}
-#PBS -l select=${INITATMOS_nnodes}:ncpus=${INITATMOS_ncores}:mpiprocs=${INITATMOS_ncores}
-#PBS -l walltime=${STATIC_walltime}
 #PBS -q ${INITATMOS_QUEUE}
-#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.e$PBS_JOBID          # File name for standard error output
+#PBS -l select=${INITATMOS_nnodes}:ncpus=${INITATMOS_ncpn}:mpiprocs=${INITATMOS_ncpn}
+#PBS -l place=scatter
 #PBS -l place=excl
-##PBS -l mem=500000mb
+#PBS -l walltime=${STATIC_walltime}
+#PBS -j oe
+#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.o$PBS_JOBID
+#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.e$PBS_JOBID
 
 
 export executable=init_atmosphere_model
@@ -24,9 +25,8 @@ ulimit -s unlimited
 cd ${DIRRUN}
 
 
-
 date
-time mpirun -np \${SLURM_NTASKS} ./\${executable}
+time mpirun -np ${INITATMOS_ncores} ./\${executable}
 date
 
 

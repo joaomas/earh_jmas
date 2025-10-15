@@ -3,13 +3,14 @@
 cat << EOF0 > ${DIRRUN}/initatmos.bash 
 #!/bin/bash -x
 #PBS -N ${INITATMOS_jobname}
-#PBS -l select=${INITATMOS_nnodes}:ncpus=${INITATMOS_ncores}:mpiprocs=${INITATMOS_ncores}
-#PBS -l walltime=${STATIC_walltime}
 #PBS -q ${INITATMOS_QUEUE}
-#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.e$PBS_JOBID          # File name for standard error output
+#PBS -l select=${INITATMOS_nnodes}:ncpus=${INITATMOS_ncpn}:mpiprocs=${INITATMOS_ncpn}
+#PBS -l place=scatter
 #PBS -l place=excl
-##PBS -l mem=500000mb
+#PBS -l walltime=${STATIC_walltime}
+#PBS -j oe
+#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.o$PBS_JOBID
+#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/initatmos.bash.e$PBS_JOBID
 
 
 export executable=init_atmosphere_model
@@ -24,19 +25,14 @@ ulimit -s unlimited
 cd ${DIRRUN}
 
 
+export CURRENT_HOST=\$(cat \$PBS_NODEFILE)
+export HOSTFILE=${DIRRUN}/hostfile
+echo "\${CURRENT_HOST}" | sed "s,\..*$,," > \${HOSTFILE}
 
 date
-time srun --mpi=pmi2 --ntasks=\${SLURM_NTASKS} singularity exec --bind ${SCRIPTS}/.. --bind /home ${SINGULARITY} bash -c '
-   export OMPI_MCA_btl=openib,self,vader
-   export OMPI_MCA_btl_openib_if_include=mlx5_0:1
-   export OMPI_MCA_btl_openib_allow_ib=1
-   export OMPI_MCA_oob_tcp_if_include=ib0
-   export OMPI_MCA_plm=isolated
-   export OMPI_MCA_rmaps_base_oversubscribe=1
-   export OMP_NUM_THREADS=1
-   export HYDRA_ALLOW_RUN_AS_ROOT=1
-   ./\${executable}
-'
+time ${CMD_SINGULARITY} exec --bind ${SCRIPTS}/.. --bind /home ${SINGULARITY} bash -c "
+   mpirun -np ${INITATMOS_ncores} --hostfile \${HOSTFILE} ./\${executable}
+"
 date
 
 

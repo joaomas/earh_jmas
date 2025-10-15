@@ -1,15 +1,16 @@
-#!/bin/bash
+#!/bin/bash +x
 
 cat << EOF0 > ${DIRRUN}/static.bash
 #!/bin/bash -x
 #PBS -N ${STATIC_jobname}
-#PBS -l select=${STATIC_nnodes}:ncpus=${STATIC_ncpn}
 #PBS -q ${STATIC_QUEUE}
-#PBS -l walltime=${STATIC_walltime}
-#PBS -o ${DATAOUT}/logs/static.bash.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/logs/static.bash.e$PBS_JOBID          # File name for standard error output
+#PBS -l select=${STATIC_nnodes}:ncpus=${STATIC_ncpn}:mpiprocs=${STATIC_ncpn}
+#PBS -l place=scatter
 #PBS -l place=excl
-##PBS -l mem=500000mb
+#PBS -l walltime=${STATIC_walltime}
+#PBS -j oe
+#PBS -o ${DATAOUT}/logs/static.bash.o${PBS_JOBID}
+#PBS -e ${DATAOUT}/logs/static.bash.e${PBS_JOBID}
 
 
 export executable=init_atmosphere_model
@@ -22,9 +23,11 @@ ulimit -v unlimited
 
 cd ${DIRRUN}
 
+
 date
-time mpirun -np \${SLURM_NTASKS} ./\${executable}
+time mpiexec.hydra -n ${STATIC_ncores} ./\${executable}
 date
+
 
 grep "Finished running" log.init_atmosphere.0000.out >& /dev/null
 if [ \$? -ne 0 ]; then

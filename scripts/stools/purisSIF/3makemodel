@@ -4,12 +4,13 @@ cat << EOF0 > ${DIRRUN}/model.bash
 #!/bin/bash -x
 #PBS -N ${MODEL_jobname}
 #PBS -q ${MODEL_QUEUE}
-#PBS -l select=${MODEL_nnodes}:ncpus=${MODEL_ncpn}
-#PBS -l walltime=${MODEL_walltime}
-#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.e$PBS_JOBID          # File name for standard error output
+#PBS -l select=${MODEL_nnodes}:ncpus=${MODEL_ncpn}:mpiprocs=${MODEL_ncpn}
+#PBS -l place=scatter
 #PBS -l place=excl
-##PBS -l mem=500000mb
+#PBS -l walltime=${MODEL_walltime}
+#PBS -j oe
+#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.o$PBS_JOBID
+#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Model/logs/model.bash.e$PBS_JOBID
 
 
 export executable=atmosphere_model
@@ -23,19 +24,16 @@ ulimit -s unlimited
 cd ${DIRRUN}
 
 
+export CURRENT_HOST=\$(cat \$PBS_NODEFILE)
+export HOSTFILE=${DIRRUN}/hostfile
+echo "\${CURRENT_HOST}" | sed "s,\..*$,," > \${HOSTFILE}
+
 date
-time srun --mpi=pmi2 --ntasks=\${SLURM_NTASKS} singularity exec --bind ${SCRIPTS}/.. --bind /home ${SINGULARITY} bash -c '
-   export OMPI_MCA_btl=openib,self,vader
-   export OMPI_MCA_btl_openib_if_include=mlx5_0:1
-   export OMPI_MCA_btl_openib_allow_ib=1
-   export OMPI_MCA_oob_tcp_if_include=ib0
-   export OMPI_MCA_plm=isolated
-   export OMPI_MCA_rmaps_base_oversubscribe=1
-   export OMP_NUM_THREADS=1
-   export HYDRA_ALLOW_RUN_AS_ROOT=1
-   ./\${executable}
-'
+time ${CMD_SINGULARITY} exec --bind ${SCRIPTS}/.. --bind $HOME ${SINGULARITY} bash -c "
+   mpirun -np ${MODEL_ncores} --hostfile \${HOSTFILE} ./\${executable}
+"
 date
+
 
 #
 # move dataout, clean up and remove files/links

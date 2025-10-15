@@ -4,11 +4,13 @@ cat << EOF0 > ${DIRRUN}/degrib.bash
 #!/bin/bash -x
 #PBS -N ${DEGRIB_jobname}
 #PBS -q ${DEGRIB_QUEUE}
-#PBS -l select=${DEGRIB_nnodes}:ncpus=${DEGRIB_ncpn}
+#PBS -l select=${DEGRIB_nnodes}:ncpus=${DEGRIB_ncpn}:mpiprocs=${DEGRIB_ncpn}
+#PBS -l place=scatter
+#PBS -l place=excl
 #PBS -l walltime=${STATIC_walltime}
-#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/degrib.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/degrib.e$PBS_JOBID          # File name for standard error output
-##PBS -l mem=500000mb
+#PBS -j oe
+#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/degrib.o$PBS_JOBID
+#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Pre/logs/degrib.e$PBS_JOBID
 
 
 ulimit -s unlimited
@@ -34,7 +36,8 @@ sed -e "s,#LABELI#,${start_date},g;s,#PREFIX#,GFS,g" \
 ./link_grib.csh ${DATAIN}/${YYYYMMDDHHi}/gfs.t${YYYYMMDDHHi:8:2}z.pgrb2.0p25.f000.${YYYYMMDDHHi}.grib2
 
 date
-time mpirun -np 1 ./ungrib.exe
+#time mpirun -np 1 ./ungrib.exe
+time mpirun -np 1 ungrib.exe
 date
 
 

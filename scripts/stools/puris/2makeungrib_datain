@@ -12,3 +12,18 @@ then
       BNDDIR=${GCCCIS}/${YYYYMMDDHHi:0:4}/${YYYYMMDDHHi}
    fi
 fi
+
+#files_needed=("${DATAIN}/fixed/x1.${RES}.static.nc" "${DATAIN}/fixed/Vtable.${EXP}" "${EXECS}/ungrib.exe" "${BNDDIR}/gfs.t${YYYYMMDDHHi:8:2}z.pgrb2.0p25.f000.${YYYYMMDDHHi}.grib2")
+files_needed=("${DATAIN}/fixed/x1.${RES}.static.nc" "${DATAIN}/fixed/Vtable.${EXP}" "${BNDDIR}/gfs.t${YYYYMMDDHHi:8:2}z.pgrb2.0p25.f000.${YYYYMMDDHHi}.grib2")
+for file in "${files_needed[@]}"
+do
+  if [ ! -s "${file}" ]
+  then
+    echo -e  "\n${RED}==>${NC} ***** ATTENTION *****\n"
+    echo -e  "${RED}==>${NC} [${0}] At least the file ${file} was not generated. \n"
+    exit -1
+  fi
+done
+
+#cp -f ${EXECS}/ungrib.exe ${DIRRUN}
+cp -f ${BNDDIR}/gfs.t${YYYYMMDDHHi:8:2}z.pgrb2.0p25.f000.${YYYYMMDDHHi}.grib2 ${DATAIN}/${YYYYMMDDHHi}

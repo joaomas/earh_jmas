@@ -1,3 +1,3 @@
 #!/bin/bash
 
-singularity exec ${SINGULARITY} bash -c "bc -l"
+${CMD_SINGULARITY} exec ${SINGULARITY} bash -c "bc -l"

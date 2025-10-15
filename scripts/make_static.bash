@@ -59,8 +59,8 @@ then
    then
       cd ${DATAIN}/fixed
       echo -e "${GREEN}==>${NC} downloading meshes tgz files ... \n"
-      wget https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz
-      wget https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}_static.tar.gz
+      wget https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz --no-check-certificate
+      wget https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}_static.tar.gz --no-check-certificate
       tar -xzvf x1.${RES}.tar.gz
       tar -xzvf x1.${RES}_static.tar.gz
    fi

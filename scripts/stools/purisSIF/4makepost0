@@ -4,11 +4,13 @@ cat > ${DIRRUN}/PostAtmos_node.${node}.sh <<EOSH
 #!/bin/bash
 #PBS -N MO.Pos${node}
 #PBS -q ${POST_QUEUE}
-#PBS -l select=1:ncpus=1
+#PBS -l select=1:ncpus=1:mpiprocs=1
+#PBS -l place=scatter
+#PBS -l place=excl
 #PBS -l walltime=${POST_walltime}
-#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.o$PBS_JOBID          # File name for standard output
-#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.e$PBS_JOBID          # File name for standard error output
-##PBS -l mem=500000mb
+#PBS -j oe
+#PBS -o ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.o$PBS_JOBID
+#PBS -e ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.e$PBS_JOBID
 
 
 . ${SCRIPTS}/setenv.bash
