@@ -36,8 +36,8 @@ sed -e "s,#LABELI#,${start_date},g;s,#PREFIX#,GFS,g" \
 ./link_grib.csh ${DATAIN}/${YYYYMMDDHHi}/gfs.t${YYYYMMDDHHi:8:2}z.pgrb2.0p25.f000.${YYYYMMDDHHi}.grib2
 
 date
-#time mpirun -np 1 ./ungrib.exe
-time mpirun -np 1 ungrib.exe
+time mpirun -np 1 ./ungrib.exe
+#time mpirun -np 1 ungrib.exe           # module load ungrib/4.5
 date
 
 

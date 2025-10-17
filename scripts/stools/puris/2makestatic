@@ -25,7 +25,7 @@ cd ${DIRRUN}
 
 
 date
-time mpiexec.hydra -n ${STATIC_ncores} ./\${executable}
+time mpirun -np ${STATIC_ncores} ./\${executable}
 date
 
 

@@ -4,6 +4,7 @@ cat << EOF0 > ${DIRRUN}/model.bash
 #!/bin/bash -x
 #PBS -N ${MODEL_jobname}
 #PBS -q ${MODEL_QUEUE}
+##PBS -l select=${MODEL_nnodes}:ncpus=${MODEL_ncpn}:mpiprocs=${MODEL_ncpn}:ompthreads=1
 #PBS -l select=${MODEL_nnodes}:ncpus=${MODEL_ncpn}:mpiprocs=${MODEL_ncpn}
 #PBS -l place=scatter
 #PBS -l place=excl
@@ -24,7 +25,9 @@ ulimit -s unlimited
 cd ${DIRRUN}
 
 
+export OMP_NUM_THREADS=1
 date
+#time mpirun -ppn ${MODEL_ncpn} -np ${MODEL_ncores} --depth=1 --cpu-bind depth ./\${executable}
 time mpirun -np ${MODEL_ncores} ./\${executable}
 date
 

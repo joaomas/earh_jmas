@@ -1,4 +1,4 @@
 #!/bin/bash
 
-qsub -W block=true -W depend=afterok:${dependency} ${DIRRUN}/PostAtmos_node.${node}.sh
+jobid[${node}]=$(qsub -W block=true ${DIRRUN}/PostAtmos_node.${node}.sh | cut -d '.' -f1)
 
