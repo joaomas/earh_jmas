@@ -1,4 +1,4 @@
-# earh_jmas
+# earth_jmas
 Repositório Modelo Earh JMAS
 
 - feature/pesq200 - ATENÇÃO incompativel com operacional!
