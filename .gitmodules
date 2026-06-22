@@ -1,0 +1,6 @@
+[submodule "models/ia/anemoi_jmas"]
+	path = models/ia/anemoi_jmas
+	url = https://github.com/joaomas/anemoi_jmas.git
+[submodule "models/checks/nc"]
+	path = models/checks/nc
+	url = https://github.com/joaomas/check_nc.git
